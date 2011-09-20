@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby1.8
+
+require 'rubygems'
+require 'grit'
+
+class InvalidReferenceError < StandardError; end
+
+def make_treesame(repo_path, ref, merge=false, force=false)
+  git_dir = `cd #{repo_path} && git rev-parse --git-dir`.strip
+  raise Grit::InvalidGitRepositoryError.new(repo_path) if git_dir.empty?
+  git_dir = File.expand_path(git_dir)
+
+  repo = Grit::GitRuby::Repository.new(git_dir)
+  grit_repo = Grit::Repo.new git_dir, :is_bare => true
+
+  commit = grit_repo.commit(ref) || (raise InvalidReferenceError.new(ref))
+  parent_commit = grit_repo.commit("HEAD")
+  return if commit.tree.id == parent_commit.tree.id and !force
+  parents = [parent_commit.id]
+  parents << commit.id if merge
+
+  author = Grit::Actor.new(`cd #{repo_path} && git config user.name`.strip, `cd #{repo_path} && git config user.email`.strip).output(Time.now)
+  message = "treesame commit of #{ref}\n\nTreesame-Commit-Id: #{commit.id}\n"
+
+  new_commit = Grit::GitRuby::Commit.new(commit.tree.id, parents, author, author, message, {}, repo)
+  new_commit_sha1 = repo.put_raw_object(new_commit.raw_content, new_commit.type.to_s)
+
+  path = File.join(git_dir, `cd #{repo_path} && git symbolic-ref HEAD`.strip)
+  FileUtils.mkdir_p(File.dirname(path))
+  File.open(path, 'w') { |f| f.write(new_commit_sha1) }
+
+  `cd #{repo_path} && git reset --hard HEAD`
+end
+
+if __FILE__ == $0
+  ref = ARGV.shift
+  if ref == "--help"
+    puts "usage: git-treesame-commit [--merge] <ref>
+
+given a ref, git-treesame-commit <ref> will create a new merge commit that has
+the exact same treehash as the given ref on your current branch. if --merge is
+provided, <ref> is added as a parent commit."
+  elsif ref == "--merge"
+    make_treesame ".", ARGV[0], true
+  else
+    make_treesame ".", ref
+  end
+end

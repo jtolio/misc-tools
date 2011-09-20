@@ -1,0 +1,36 @@
+#!/usr/bin/env ruby1.8
+
+require 'rubygems'
+require 'grit'
+
+def find_treesame(repo_path, treehash, branches_to_skip=[])
+  git_dir = `cd #{repo_path} && git rev-parse --git-dir`.strip
+  raise Grit::InvalidGitRepositoryError.new(repo_path) if git_dir.empty?
+  git_dir = File.expand_path(git_dir)
+  repo = Grit::Repo.new(git_dir)
+  queue = repo.heads.reject{|x| branches_to_skip.include? x.name}.map(&:commit)
+  seen = {}
+  until queue.empty?
+    commit = queue.shift
+    next if seen.has_key?(commit.id)
+    seen[commit.id] = true
+    yield commit if commit.tree.id == treehash
+    queue += commit.parents
+  end
+end
+
+if __FILE__ == $0
+  treehash = ARGV.shift
+  if treehash == "--help"
+    puts "usage: git-treesame-find [--first] <treehash> [<branch-to-skip> ...]
+
+given a treehash, start searching through all branch heads (optionally
+skipping some branches) breadth-first for commits that match that treehash.
+if --first is provided, bail after one is found."
+  elsif treehash == "--first"
+    treehash = ARGV.shift
+    find_treesame(".", treehash, ARGV) { |commit| puts commit.id; break }
+  else
+    find_treesame(".", treehash, ARGV) { |commit| puts commit.id }
+  end
+end
