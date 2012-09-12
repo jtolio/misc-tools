@@ -26,8 +26,10 @@ module GitHelpers
         "hashes" => {}
       }}
     loop do
+      any_search_succeeded = false
       searches.each do |search|
-        raise GraphError if search["queue"].empty?
+        next if search["queue"].empty?
+        any_search_succeeded = true
         commit = search["queue"].shift
         tree_id = commit.tree.id
         search["hashes"][tree_id] ||= commit
@@ -38,6 +40,7 @@ module GitHelpers
         return set unless set.nil?
         search["queue"] += commit.parents
       end
+      raise GraphError unless any_search_succeeded
     end
   end
 
