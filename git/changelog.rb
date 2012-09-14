@@ -139,10 +139,8 @@ class ChangelogGenerator
   def initialize(repo_path)
     git_dir = `cd #{repo_path} && git rev-parse --git-dir`.strip
     raise Grit::InvalidGitRepositoryError.new(repo_path) if git_dir.empty?
-    working_dir = `cd #{repo_path} && git rev-parse --show-toplevel`.strip
     @git_dir = File.expand_path(git_dir)
-    @working_dir = working_dir.empty? ? nil : File.expand_path(working_dir)
-    @repo = Grit::Repo.new @git_dir, :is_bare => @working_dir.nil?
+    @repo = Grit::Repo.new @git_dir, :is_bare => true
   end
 
   def changelog(old_ref, new_ref, options={})
