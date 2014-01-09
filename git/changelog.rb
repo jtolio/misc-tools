@@ -52,6 +52,13 @@ module GitHelpers
     commit.message.split("\n").first.strip
   end
 
+  def commit_touches_subdir(commit, subdir)
+    `git --git-dir="#{@git_dir}" diff --name-only "#{commit}"^ "#{commit}"`.strip.split("\n").each do |path|
+      return true if path.start_with? subdir
+    end
+    false
+  end
+
 end
 
 class Changelog
@@ -85,6 +92,15 @@ class Changelog
       end
     end
     lines.join
+  end
+
+  def filter(subdir)
+    @removed.select! do |commit|
+      commit_touches_subdir commit, subdir
+    end
+    @added.select! do |commit|
+      commit_touches_subdir commit, subdir
+    end
   end
 
   private
@@ -137,10 +153,12 @@ end
 
 if __FILE__ == $0
   if ARGV[0] == "--help"
-    puts "usage: changelog.rb <hash1> <hash2>
+    puts "usage: changelog.rb <hash1> <hash2> [subdir]
 
 generates a changelog history between two hashes in a git repo"
   else
-    puts ChangelogGenerator.new(".").changelog(ARGV[0], ARGV[1]).format
+    changelog = ChangelogGenerator.new(".").changelog(ARGV[0], ARGV[1])
+    changelog.filter ARGV[2] if ARGV[2]
+    puts changelog.format
   end
 end
