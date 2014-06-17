@@ -73,6 +73,8 @@ class Changelog
     @style = options[:style] || :treesame
     @removed = []
     @added = []
+    @old_base = nil
+    @new_base = nil
     calculate
   end
 
@@ -86,6 +88,9 @@ class Changelog
         lines << "  * [-#{commit.id[0..6]}] #{get_first_line commit}\n"
       end
     end
+    if @old_base.id != @new_base.id
+      lines << "  * #{@old_base.id[0..6]} -> #{@new_base.id[0..6]}\n"
+    end
     @added.each do |commit|
       unless added_and_removed_messages.include? get_first_line(commit)
         lines << "  * [+#{commit.id[0..6]}] #{get_first_line commit}\n"
@@ -95,10 +100,10 @@ class Changelog
   end
 
   def filter(subdir)
-    @removed.select! do |commit|
+    @removed = @removed.select do |commit|
       commit_touches_subdir commit, subdir
     end
-    @added.select! do |commit|
+    @added = @added.select do |commit|
       commit_touches_subdir commit, subdir
     end
   end
@@ -116,6 +121,8 @@ class Changelog
 
   def calculate_from_changeid
     base = merge_base_ref @old_ref, @new_ref
+    @old_base = base
+    @new_base = base
     old_commits = @repo.commits_between base, @old_ref
     new_commits = @repo.commits_between base, @new_ref
     old_changes = old_commits.map{|x| get_change_id(x)}.to_set
@@ -127,9 +134,9 @@ class Changelog
   end
 
   def calculate_from_treesame
-    old_base, new_base = treesame_base_refs @old_ref, @new_ref
-    @added = @repo.commits_between(new_base, @new_ref)
-    @removed = @repo.commits_between(old_base, @old_ref).reverse
+    @old_base, @new_base = treesame_base_refs @old_ref, @new_ref
+    @added = @repo.commits_between(@new_base, @new_ref)
+    @removed = @repo.commits_between(@old_base, @old_ref).reverse
   end
 
 end
