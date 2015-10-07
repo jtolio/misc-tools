@@ -37,30 +37,3 @@ def make_treesame(ref, merge=false, repo_path=".", force=false, message=nil)
   `cd #{repo_path} && git reset --hard #{new_commit_sha1}`
   return new_commit_sha1
 end
-
-if __FILE__ == $0
-  args = []
-  merge = false
-  force = false
-  usage = "usage: git-treesame-commit [--merge, --force] <ref>
-
-given a ref, git-treesame-commit <ref> will create a new merge commit that has
-the exact same treehash as the given ref on your current branch. if --merge is
-provided, <ref> is added as a parent commit."
-
-  ARGV.each do |arg|
-    if arg == "--help"
-      abort usage
-    elsif arg == "--merge"
-      merge = true
-    elsif arg == "--force"
-      force = true
-    else
-      args << arg
-    end
-  end
-
-  abort usage if args.size != 1
-
-  make_treesame args[0], merge, ".", force
-end
