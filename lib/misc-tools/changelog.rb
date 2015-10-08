@@ -156,14 +156,5 @@ class ChangelogGenerator
 
 end
 
-if __FILE__ == $0
-  if ARGV[0] == "--help"
-    puts "usage: changelog.rb <hash1> <hash2> [subdir]
-
-generates a changelog history between two hashes in a git repo"
-  else
-    changelog = ChangelogGenerator.new(".").changelog(ARGV[0], ARGV[1])
-    changelog.filter ARGV[2] if ARGV[2]
-    puts changelog.format
-  end
-end
+# if __FILE__ == $0
+# end
